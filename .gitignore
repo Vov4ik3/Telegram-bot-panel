@@ -1,0 +1,8 @@
+# the panel's own database - regenerates on first run
+panel.db
+
+# virtual environment - recreate per-machine
+venv/
+
+__pycache__/
+*.pyc

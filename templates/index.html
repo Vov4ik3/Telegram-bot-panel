@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot Panel</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Bot Panel</h1>
+    <button id="add-toggle" class="btn primary">+ Add bot</button>
+  </header>
+
+  <section id="add-form" class="card hidden">
+    <h2>Add a bot</h2>
+    <p class="hint">Folder must contain a <code>manifest.json</code>.</p>
+    <label>
+      Folder path
+      <input type="text" id="folder-path" placeholder="C:\projects\my-bot or /home/user/my-bot">
+    </label>
+    <label id="display-name-field" class="hidden">
+      Display name <span class="hint">(name's taken — pick another)</span>
+      <input type="text" id="display-name">
+    </label>
+    <div class="row">
+      <button id="add-submit" class="btn primary">Add</button>
+      <button id="add-cancel" class="btn">Cancel</button>
+    </div>
+    <p id="add-error" class="error hidden"></p>
+  </section>
+
+  <section id="bot-list"></section>
+
+  <template id="bot-row-template">
+    <article class="bot-row">
+      <div class="bot-summary">
+        <span class="glyph"></span>
+        <span class="name"></span>
+        <div class="actions">
+          <button class="btn start">Start</button>
+          <button class="btn stop">Stop</button>
+          <button class="btn rename">Rename</button>
+          <button class="btn danger delete">Delete</button>
+        </div>
+      </div>
+      <div class="bot-detail hidden">
+        <div class="detail-row"><span class="label">State:</span> <span class="state"></span></div>
+        <div class="detail-row"><span class="label">Description:</span> <span class="description"></span></div>
+        <div class="detail-row"><span class="label">Static name:</span> <span class="static-name"></span></div>
+        <div class="detail-row"><span class="label">Folder:</span> <span class="folder"></span></div>
+        <div class="detail-row"><span class="label">Entrypoint:</span> <span class="entrypoint"></span></div>
+        <button class="btn log-toggle">Show log</button>
+        <pre class="log hidden"></pre>
+      </div>
+    </article>
+  </template>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
