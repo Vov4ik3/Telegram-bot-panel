@@ -102,6 +102,23 @@ function buildRow(bot) {
 
   refs.logToggle.addEventListener("click", () => toggleLog(bot.id, refs));
 
+  node.querySelector(".open-log-tab").addEventListener("click", () => {
+    window.open(`/api/bots/${bot.id}/log/raw`, "_blank");
+  });
+
+  node.querySelector(".clear-log").addEventListener("click", async () => {
+    if (!confirm(`Clear the log for "${refs.name.textContent}"? This can't be undone.`)) return;
+    const res = await fetch(`/api/bots/${bot.id}/log/clear`, { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || "Failed to clear log.");
+      return;
+    }
+    if (openLogs.has(bot.id)) {
+      loadLog(bot.id, refs.log);
+    }
+  });
+
   node.querySelector(".start").addEventListener("click", async () => {
     await fetch(`/api/bots/${bot.id}/start`, { method: "POST" });
     refresh();
@@ -197,7 +214,7 @@ function render(bots) {
     existingEmpty.remove();
   }
 
-  for (const bot of bots) {
+  bots.forEach((bot, index) => {
     seenIds.add(bot.id);
     let refs = rows.get(bot.id);
     if (!refs) {
@@ -205,8 +222,13 @@ function render(bots) {
       rows.set(bot.id, refs);
     }
     updateRow(bot, refs);
-    botList.appendChild(refs.article); // moves into correct order without recreating it
-  }
+    // Only touch the DOM position if it's actually out of order - moving a
+    // node (even to the same spot) clears any active text selection inside
+    // it, which was silently undoing the log-selection protection above.
+    if (botList.children[index] !== refs.article) {
+      botList.insertBefore(refs.article, botList.children[index] || null);
+    }
+  });
 
   // remove rows for bots that no longer exist (e.g. deleted from another tab)
   for (const [id, refs] of rows) {
@@ -220,10 +242,33 @@ function render(bots) {
 }
 
 async function loadLog(botId, logEl) {
+  // Don't disrupt an active text selection inside this log - let the user
+  // finish copying before the next poll overwrites it.
+  const selection = document.getSelection();
+  if (selection && !selection.isCollapsed && logEl.contains(selection.anchorNode)) {
+    return;
+  }
+
   const res = await fetch(`/api/bots/${botId}/log`);
   const data = await res.json();
   const text = data.log || "(no output yet)";
-  if (logEl.textContent !== text) logEl.textContent = text; // skip write if unchanged
+  if (logEl.textContent === text) return;
+
+  // Replacing textContent resets scrollTop to 0 as a side effect - capture
+  // state first so we can restore a sensible position after.
+  const wasAtBottom = logEl.scrollHeight - logEl.scrollTop <= logEl.clientHeight + 20;
+  const prevScrollHeight = logEl.scrollHeight;
+  const prevScrollTop = logEl.scrollTop;
+
+  logEl.textContent = text;
+
+  if (wasAtBottom) {
+    logEl.scrollTop = logEl.scrollHeight; // keep following live output
+  } else {
+    // preserve relative position instead of snapping back to the top
+    const delta = logEl.scrollHeight - prevScrollHeight;
+    logEl.scrollTop = prevScrollTop + delta;
+  }
 }
 
 refresh();

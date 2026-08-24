@@ -1,11 +1,32 @@
-from flask import Flask, jsonify, render_template, request
+import os
+import secrets
+
+from dotenv import load_dotenv
+from flask import Flask, jsonify, render_template, request, send_file
 
 import db
 import process_manager
 from manifest import ManifestError, read_manifest
 
+load_dotenv()
+
 app = Flask(__name__)
 db.init_db()
+
+PANEL_PASSWORD = os.environ.get("PANEL_PASSWORD", "").strip()
+
+
+@app.before_request
+def require_password():
+    if not PANEL_PASSWORD:
+        return  # no password configured - open on the LAN, by choice
+    auth = request.authorization
+    if not auth or not secrets.compare_digest(auth.password or "", PANEL_PASSWORD):
+        return (
+            "Password required.",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Bot Panel"'},
+        )
 
 
 @app.route("/")
@@ -112,5 +133,37 @@ def bot_log(bot_id):
     return jsonify({"log": process_manager.tail_log(bot["folder_path"], n=200)})
 
 
+@app.route("/api/bots/<int:bot_id>/log/clear", methods=["POST"])
+def clear_bot_log(bot_id):
+    bot = db.get_bot(bot_id)
+    if not bot:
+        return jsonify({"error": "No such bot."}), 404
+    try:
+        process_manager.clear_log(bot["folder_path"])
+    except OSError as e:
+        return jsonify({
+            "error": f"Couldn't clear log - try stopping the bot first: {e}"
+        }), 500
+    return jsonify({"ok": True})
+
+
+@app.route("/api/bots/<int:bot_id>/log/raw", methods=["GET"])
+def bot_log_raw(bot_id):
+    """Full, untruncated log as plain text - meant to be opened in its own
+    tab so it's a normal static page: freely selectable, Ctrl+F works, and
+    nothing here is touched by the panel's polling."""
+    bot = db.get_bot(bot_id)
+    if not bot:
+        return jsonify({"error": "No such bot."}), 404
+    path = process_manager.log_path(bot["folder_path"])
+    if not path.exists():
+        return "(no output yet)", 200, {"Content-Type": "text/plain; charset=utf-8"}
+    return send_file(path, mimetype="text/plain")
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    if not PANEL_PASSWORD:
+        print("WARNING: PANEL_PASSWORD not set - the panel is reachable on")
+        print("your LAN with no login at all. Set PANEL_PASSWORD in .env if")
+        print("that's not what you want.")
+    app.run(host="0.0.0.0", port=5000, debug=False)

@@ -176,8 +176,15 @@ input[type="text"]:focus {
 .state.offline { color: var(--grey); }
 .state.crashed, .state.launch_failed { color: var(--red); }
 
-.log-toggle {
+.log-controls {
+  display: flex;
+  gap: 8px;
   margin-top: 8px;
+}
+
+.log-toggle,
+.open-log-tab,
+.clear-log {
   padding: 5px 10px;
   font-size: 12px;
 }

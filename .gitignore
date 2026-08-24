@@ -1,3 +1,6 @@
+# secrets - never commit this
+.env
+
 # the panel's own database - regenerates on first run
 panel.db
 

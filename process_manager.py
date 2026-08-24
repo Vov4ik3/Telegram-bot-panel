@@ -38,6 +38,12 @@ def log_path(folder_path: str) -> Path:
     return Path(folder_path) / "panel_run.log"
 
 
+def clear_log(folder_path: str) -> None:
+    path = log_path(folder_path)
+    if path.exists():
+        path.write_text("", encoding="utf-8")
+
+
 def tail_log(folder_path: str, n: int = LOG_TAIL_LINES) -> str:
     path = log_path(folder_path)
     if not path.exists():
